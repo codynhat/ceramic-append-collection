@@ -16,7 +16,7 @@ This guide describes how to create, update, and query an Append Collection.
 	const collection = await AppendCollection.create(ceramic, { sliceMaxItems })
 	const cursor = await collection.insert({ foo: 'bar' })
 	const item = await collection.getItem(cursor)
-  console.log(item.value) // { foo: 'bar' }
+	console.log(item.value) // { foo: 'bar' }
 	await collection.remove(item.cursor)
 
 	...
