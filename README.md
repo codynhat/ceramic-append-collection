@@ -1,23 +1,28 @@
 
+  
+
 # Ceramic Append Collection
+
 This guide describes how to create, update, and query an Append Collection.
 
 ## Installation
+
 	npm install @cbj/ceramic-append-collection
-	
+
 ## Basic Use
 
-    import { AppendCollection } from 'cermic-append-collection'
-    
+	import { AppendCollection } from '@cbj/cermic-append-collection'
+
 	const collection = await AppendCollection.create(ceramic, { sliceMaxItems })
 	const cursor = await collection.insert({ foo: 'bar' })
-	await collection.remove(cursor)
-	
+	const item = await collection.getItem(cursor)
+	await collection.remove(item.cursor)
+
 	...
 
-    const collection = await AppendCollection.load(ceramic, streamId)
-    const firstItems = await collection.getFirstN(N)
-    const lastItems = await collection.getLastN(N)
+	const collection = await AppendCollection.load(ceramic, streamId)
+	const firstItems = await collection.getFirstN(N)
+	const lastItems = await collection.getLastN(N)
 
 ## Query a Collection
 
