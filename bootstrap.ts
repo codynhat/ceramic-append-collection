@@ -67,7 +67,7 @@ async function bootstrap() {
   const model = await manager.toPublished()
   // Write published model to JSON file
   await writeFile('./src/model.json', JSON.stringify(model))
-  console.log('Schemas written to ./model.json file:', model)
+  console.log('Schemas written to ./src/model.json file:', model)
 }
 
 bootstrap().catch(console.error)
