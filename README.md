@@ -29,7 +29,7 @@ This guide describes how to create, update, and query an Append Collection.
 
 	getFirstN(N: number, fromCursor?: Cursor): Promise<Item[]>;
 
-	getLastN(N: number, beforeCursor?: Cursor): Promise<Item[]>;
+	getLastN(N: number, fromCursor?: Cursor): Promise<Item[]>;
 
 	getItem(cursor: Cursor): Promise<Item | null>;
 

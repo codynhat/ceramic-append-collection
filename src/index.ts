@@ -18,7 +18,7 @@ export interface Collection {
   insert(item: any): Promise<Cursor>;
   remove(cursor: Cursor): Promise<void>;
   getFirstN(N: number, fromCursor?: Cursor): Promise<Item[]>;
-  getLastN(N: number, beforeCursor?: Cursor): Promise<Item[]>;
+  getLastN(N: number, fromCursor?: Cursor): Promise<Item[]>;
   getItem(cursor: Cursor): Promise<Item | null>;
   getHeadCursor(cursor: Cursor): Cursor;
   getTailCursor(cursor: Cursor): Cursor;
