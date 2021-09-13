@@ -13,17 +13,15 @@ export interface Item {
 
 export interface Collection {
   id: any;
-  sliceMaxItems: number;
   insert(item: any): Promise<Cursor>;
   remove(cursor: Cursor): Promise<void>;
   getFirstN(N: number, fromCursor?: Cursor | null): Promise<Item[]>;
   getLastN(N: number, fromCursor?: Cursor | null): Promise<Item[]>;
   getItem(cursor: Cursor): Promise<Item | null>;
-  getHeadCursor(cursor: Cursor): Promise<Cursor | null>;
-  getTailCursor(cursor: Cursor): Promise<Cursor | null>;
+  getHeadCursor(): Promise<Cursor | null>;
+  getTailCursor(): Promise<Cursor | null>;
   getNextCursor(cursor: Cursor): Promise<Cursor | null>;
   getPreviousCursor(cursor: Cursor): Promise<Cursor | null>;
-  getSlicesCount(): Promise<number>;
 }
 
 const newSlice = async (ceramic: any, collectionId: string, index: number) => {
@@ -255,8 +253,6 @@ const load = async (ceramic: any, streamId: string): Promise<Collection> => {
 
   return {
     id: collection.id,
-    sliceMaxItems,
-    getSlicesCount,
     insert,
     remove,
     getFirstN,
