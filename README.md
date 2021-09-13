@@ -8,7 +8,7 @@ This guide describes how to create, update, and query an Append Collection based
 
 ## Basic Use
 
-	import { AppendCollection } from '@cbj/cermic-append-collection'
+	import { AppendCollection } from '@cbj/ceramic-append-collection'
 
 	const collection = await AppendCollection.create(ceramic, { sliceMaxItems })
 	/* or */
