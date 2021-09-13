@@ -11,19 +11,19 @@ export interface Item {
   value: any;
 }
 
-export interface AppendCollection {
+export interface Collection {
   id: any;
   sliceMaxItems: number;
-  slicesCount: number;
   insert(item: any): Promise<Cursor>;
   remove(cursor: Cursor): Promise<void>;
-  getFirstN(N: number, fromCursor?: Cursor): Promise<Item[]>;
-  getLastN(N: number, fromCursor?: Cursor): Promise<Item[]>;
+  getFirstN(N: number, fromCursor?: Cursor | null): Promise<Item[]>;
+  getLastN(N: number, fromCursor?: Cursor | null): Promise<Item[]>;
   getItem(cursor: Cursor): Promise<Item | null>;
-  getHeadCursor(cursor: Cursor): Cursor;
-  getTailCursor(cursor: Cursor): Cursor;
-  getNextCursor(cursor: Cursor): Cursor | null;
-  getPreviousCursor(cursor: Cursor): Cursor | null;
+  getHeadCursor(cursor: Cursor): Promise<Cursor | null>;
+  getTailCursor(cursor: Cursor): Promise<Cursor | null>;
+  getNextCursor(cursor: Cursor): Promise<Cursor | null>;
+  getPreviousCursor(cursor: Cursor): Promise<Cursor | null>;
+  getSlicesCount(): Promise<number>;
 }
 
 const newSlice = async (ceramic: any, collectionId: string, index: number) => {
@@ -64,7 +64,7 @@ const getSlice = async (ceramic: any, collectionId: string, index: number) => {
   return slice
 }
 
-const create = async (ceramic: any, properties:any): Promise<AppendCollection> => {
+const create = async (ceramic: any, properties:any): Promise<Collection> => {
   if(!properties?.sliceMaxItems)
     properties = { sliceMaxItems: 64 }
   else if(properties.sliceMaxItems < 10 || properties.sliceMaxItems > 256)
@@ -89,7 +89,7 @@ const create = async (ceramic: any, properties:any): Promise<AppendCollection> =
   return load(ceramic, collection.id.toString())
 }
 
-const load = async (ceramic: any, streamId: string): Promise<AppendCollection> => {
+const load = async (ceramic: any, streamId: string): Promise<Collection> => {
   const collection: any = await TileDocument.load(ceramic, streamId)
   let { sliceMaxItems, slicesCount } = collection.content
   
@@ -120,14 +120,16 @@ const load = async (ceramic: any, streamId: string): Promise<AppendCollection> =
     contents[cursor.contentIndex] = null
     await slice.update({ contents: contents })
   }
+  
+  const getFirstN = async (N: number, fromCursor?: Cursor | null): Promise<Item[]> => {
+    if(!fromCursor) fromCursor = { sliceIndex: 0, contentIndex: 0 }
+    if(!fromCursor) return []
 
-  const getFirstN = async (N: number, fromCursor: Cursor = getHeadCursor()): Promise<Item[]> => {
-    
-    async function recursiveSearch(items: any[], cursor: Cursor): Promise<any[]> {
+    async function recursiveSearch (items: any[], cursor: Cursor): Promise<any[]> {
       let { sliceIndex, contentIndex } = cursor
       if(sliceIndex < 0 || sliceIndex >= slicesCount) 
         throw new Error('Invalid sliceIndex: must be between 0 and slicesCount-1')
-
+  
       const slice: any = await getSlice(ceramic, collection.id.toString(), sliceIndex)
       const contents: any[] = slice.content.contents
       if(!contents) return []
@@ -136,7 +138,7 @@ const load = async (ceramic: any, streamId: string): Promise<AppendCollection> =
         throw new Error('Invalid contentIndex: must be greater than 0')
       if(contentIndex >= contents.length) 
         throw new Error('Invalid contentIndex: must be lower than contents.length')
-
+  
       for (let index = contentIndex; index < contents.length; index++) {
         const item = contents[index];
         if(item) {
@@ -145,22 +147,24 @@ const load = async (ceramic: any, streamId: string): Promise<AppendCollection> =
             value: item
           })
         }
-
+  
         if(items.length === N) break;
       }
-
+  
       sliceIndex = sliceIndex + 1
       if(items.length === N || sliceIndex === slicesCount)
         return items
       else
         return await recursiveSearch(items, { sliceIndex, contentIndex: 0 })
     }
-
+    
     let items: any[] = await recursiveSearch([], fromCursor)
     return items
   }
 
-  const getLastN = async (N: number, fromCursor: Cursor = getTailCursor()): Promise<Item[]> => {
+  const getLastN = async (N: number, fromCursor?: Cursor | null): Promise<Item[]> => {
+    if(!fromCursor) fromCursor = { sliceIndex: await getSlicesCount() - 1, contentIndex: sliceMaxItems - 1}
+    if(!fromCursor) return []
     
     async function recursiveSearch(items: any[], cursor: Cursor): Promise<any[]> {
       let { sliceIndex, contentIndex } = cursor
@@ -207,10 +211,11 @@ const load = async (ceramic: any, streamId: string): Promise<AppendCollection> =
     }
   }
 
-  const getNextCursor = (cursor: Cursor): Cursor | null => {
+  const getNextCursor = async (cursor: Cursor): Promise<Cursor | null> => {
     const { sliceIndex, contentIndex } = cursor
     const nextContentIndex = contentIndex + 1
     const getNextSlice = nextContentIndex === sliceMaxItems
+    const slicesCount = await getSlicesCount()
     if(getNextSlice) {
       if(sliceIndex >= slicesCount) return null
       return { sliceIndex: sliceIndex + 1, contentIndex: 0 }
@@ -220,7 +225,7 @@ const load = async (ceramic: any, streamId: string): Promise<AppendCollection> =
     }
   }
 
-  const getPreviousCursor = (cursor: Cursor): Cursor | null => {
+  const getPreviousCursor = async (cursor: Cursor): Promise<Cursor | null> => {
     const { sliceIndex, contentIndex } = cursor
     const prevContentIndex = contentIndex - 1
     const getPrevSlice = prevContentIndex < 0
@@ -229,22 +234,29 @@ const load = async (ceramic: any, streamId: string): Promise<AppendCollection> =
       return { sliceIndex: sliceIndex - 1, contentIndex: sliceMaxItems - 1 }
     }
     else {
-      return { sliceIndex: sliceIndex, contentIndex: contentIndex - 1 }
+      return { sliceIndex: sliceIndex, contentIndex: prevContentIndex }
     }
   }
 
-  const getHeadCursor = (): Cursor => {
-    return { sliceIndex: 0, contentIndex: 0 }
+  const getHeadCursor = async (): Promise<Cursor | null> => {
+    const [ item ]  = await getFirstN(1)
+    return item.cursor
   }
 
-  const getTailCursor = (): Cursor => {
-    return { sliceIndex: slicesCount - 1, contentIndex: 256 }
+  const getTailCursor = async (): Promise<Cursor | null> => {
+    const [ item ]  = await getLastN(1)
+    return item.cursor
+  }
+
+  const getSlicesCount = async (): Promise<number> => {
+    const collection: any = await TileDocument.load(ceramic, streamId)
+    return collection.content.slicesCount
   }
 
   return {
     id: collection.id,
     sliceMaxItems,
-    slicesCount,
+    getSlicesCount,
     insert,
     remove,
     getFirstN,
@@ -257,7 +269,7 @@ const load = async (ceramic: any, streamId: string): Promise<AppendCollection> =
   }
 }
 
-export {
+export const AppendCollection = {
   create,
   load,
 }
