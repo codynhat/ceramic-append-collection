@@ -13,6 +13,7 @@ This guide describes how to create, update, and query an Append Collection based
 	const collection = await AppendCollection.create(ceramic, { sliceMaxItems })
 	/* or */
 	const collection = await AppendCollection.load(ceramic, streamId)
+	const streamId = collection.id.toString()
 	
 	const cursor = await collection.insert({ foo: 'bar' })
 	const cursor2 = await collection.insert({ foo: 'baz' })
