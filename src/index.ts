@@ -11,7 +11,7 @@ export interface Item {
   value: any;
 }
 
-export interface Collection {
+export interface AppendCollection {
   id: any;
   sliceMaxItems: number;
   slicesCount: number;
@@ -64,7 +64,7 @@ const getSlice = async (ceramic: any, collectionId: string, index: number) => {
   return slice
 }
 
-const create = async (ceramic: any, properties:any): Promise<Collection> => {
+const create = async (ceramic: any, properties:any): Promise<AppendCollection> => {
   if(!properties?.sliceMaxItems)
     properties = { sliceMaxItems: 64 }
   else if(properties.sliceMaxItems < 10 || properties.sliceMaxItems > 256)
@@ -89,7 +89,7 @@ const create = async (ceramic: any, properties:any): Promise<Collection> => {
   return load(ceramic, collection.id.toString())
 }
 
-const load = async (ceramic: any, streamId: string): Promise<Collection> => {
+const load = async (ceramic: any, streamId: string): Promise<AppendCollection> => {
   const collection: any = await TileDocument.load(ceramic, streamId)
   let { sliceMaxItems, slicesCount } = collection.content
   
@@ -257,7 +257,7 @@ const load = async (ceramic: any, streamId: string): Promise<Collection> => {
   }
 }
 
-export const AppendCollection = {
+export {
   create,
   load,
 }
