@@ -2,7 +2,7 @@ import { randomBytes } from '@stablelib/random'
 import { Ed25519Provider } from 'key-did-provider-ed25519'
 import { DID } from 'dids'
 
-import { AppendCollection, Item } from '../src/index';
+import { AppendCollection, Item } from '../dist/index';
 
 const CeramicClient = require('@ceramicnetwork/http-client').default
 const KeyDidResolver = require('key-did-resolver').default
@@ -23,11 +23,14 @@ describe("test AppendCollection correctness", () => {
   it("create an append collection", async () => {
     const sliceMaxItems = 10
     const collection = await AppendCollection.create(ceramic, { sliceMaxItems })
-    const items = await collection.getFirstN(1)
-    expect(items.length).toEqual(0)
     expect(collection).toBeTruthy()
     expect(collection.sliceMaxItems).toEqual(10)
-    expect(collection.slicesCount).toEqual(1)
+    expect(await collection.getSlicesCount()).toEqual(1)
+
+    const firstItems = await collection.getFirstN(1)
+    expect(firstItems.length).toEqual(0)
+    const lastItems = await collection.getLastN(1)
+    expect(lastItems.length).toEqual(0)
   });
   
   it("load an append collection", async () => {  
@@ -36,7 +39,12 @@ describe("test AppendCollection correctness", () => {
     const collection = await AppendCollection.load(ceramic, created.id.toString())
     expect(collection).toBeTruthy()
     expect(collection.sliceMaxItems).toEqual(10)
-    expect(collection.slicesCount).toEqual(1)
+    expect(await collection.getSlicesCount()).toEqual(1)
+
+    const firstItems = await collection.getFirstN(1)
+    expect(firstItems.length).toEqual(0)
+    const lastItems = await collection.getLastN(1)
+    expect(lastItems.length).toEqual(0)
   });
 
   it("add and remove items from an append collection", async () => {
