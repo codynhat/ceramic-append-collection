@@ -1,6 +1,6 @@
 {
   "name": "@cbj/ceramic-append-collection",
-  "version": "0.1.11",
+  "version": "0.1.12",
   "description": "Create a list of items using ceramic streams",
   "author": "Joseph Reed",
   "license": "MIT",
@@ -10,7 +10,7 @@
     "bootstrap": "npx ts-node ./bootstrap.ts",
     "generateSeed": "npx ts-node ./generateSeed.ts",
     "build": "tsc && cp ./src/model.json ./dist",
-    "test": "jest",
+    "test": "tsc && cp ./src/model.json ./dist && jest",
     "postinstall": "tsc && cp ./src/model.json ./dist"
   },
   "dependencies": {
