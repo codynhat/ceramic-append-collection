@@ -215,8 +215,8 @@ const load = async (ceramic: any, streamId: string): Promise<Collection> => {
     const { sliceIndex, contentIndex } = cursor
     const nextContentIndex = contentIndex + 1
     const getNextSlice = nextContentIndex === sliceMaxItems
-    const slicesCount = await getSlicesCount()
     if(getNextSlice) {
+      const slicesCount = await getSlicesCount()
       if(sliceIndex >= slicesCount) return null
       return { sliceIndex: sliceIndex + 1, contentIndex: 0 }
     }
