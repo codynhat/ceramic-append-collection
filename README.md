@@ -1,9 +1,6 @@
-
-  
-
 # Ceramic Append Collection
 
-This guide describes how to create, update, and query an Append Collection.
+This guide describes how to create, update, and query an Append Collection that was created based using [CIP-85](https://github.com/ceramicnetwork/CIP/blob/main/CIPs/CIP-85/CIP-85.md).
 
 ## Installation
 
@@ -14,29 +11,47 @@ This guide describes how to create, update, and query an Append Collection.
 	import { AppendCollection } from '@cbj/cermic-append-collection'
 
 	const collection = await AppendCollection.create(ceramic, { sliceMaxItems })
-	const cursor = await collection.insert({ foo: 'bar' })
-	const item = await collection.getItem(cursor)
-	console.log(item.value) // { foo: 'bar' }
-	await collection.remove(item.cursor)
-
-	...
-
+	/* or */
 	const collection = await AppendCollection.load(ceramic, streamId)
-	const firstItems = await collection.getFirstN(N)
-	const lastItems = await collection.getLastN(N)
+	
+	const cursor = await collection.insert({ foo: 'bar' })
+	const cursor2 = await collection.insert({ foo: 'baz' })
+	const item1 = await collection.getItem(cursor)
+	const item2 = await collection.getItem(cursor2)
+	console.log(item1.value) // { foo: 'bar' }
+	console.log(item2.value) // { foo: 'baz' }
+		
+	let firstItems = await collection.getFirstN(1) 
+	console.log(firstItems) // [ { foo: 'bar' } ]
+	firstItems = await collection.getFirstN(2)
+	console.log(firstItems) // [ { foo: 'baz' }, { foo: 'baz' } ]
+	let lastItems = await collection.getLastN(1) 
+	console.log(lastItems) // [ { foo: 'baz' } ]
+	lastItems = await collection.getLastN(2)
+	console.log(lastItems) // [ { foo: 'baz' }, { foo: 'bar' } ]
+	
+	await collection.remove(item1.cursor)
+	firstItems = await collection.getFirstN(2)
+	console.log(firstItems) // [ { foo: 'baz' } ]
+	await collection.remove(item2.cursor)
+	firstItems = await collection.getFirstN(2)
+	console.log(firstItems) // []
+	
 
 ## Query a Collection
 
-	getFirstN(N: number, fromCursor?: Cursor): Promise<Item[]>;
+	getFirstN(N: number, fromCursor?: Cursor | null): Promise<Item[]>;
 
-	getLastN(N: number, fromCursor?: Cursor): Promise<Item[]>;
+	getLastN(N: number, fromCursor?: Cursor | null): Promise<Item[]>;
 
 	getItem(cursor: Cursor): Promise<Item | null>;
 
-	getHeadCursor(cursor: Cursor): Cursor;
+	getHeadCursor(): Promise<Cursor | null>;
 
-	getTailCursor(cursor: Cursor): Cursor;
+	getTailCursor(): Promise<Cursor | null>;
 
-	getNextCursor(cursor: Cursor): Cursor | null;
+	getNextCursor(cursor: Cursor): Promise<Cursor | null>;
 
-	getPreviousCursor(cursor: Cursor): Cursor | null;
+	getPreviousCursor(cursor: Cursor): Promise<Cursor | null>;
+
+	getSlicesCount(): Promise<number>;
