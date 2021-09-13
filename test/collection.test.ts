@@ -24,8 +24,6 @@ describe("test AppendCollection correctness", () => {
     const sliceMaxItems = 10
     const collection = await AppendCollection.create(ceramic, { sliceMaxItems })
     expect(collection).toBeTruthy()
-    expect(collection.sliceMaxItems).toEqual(10)
-    expect(await collection.getSlicesCount()).toEqual(1)
 
     const firstItems = await collection.getFirstN(1)
     expect(firstItems.length).toEqual(0)
@@ -38,8 +36,6 @@ describe("test AppendCollection correctness", () => {
     const created = await AppendCollection.create(ceramic, { sliceMaxItems })
     const collection = await AppendCollection.load(ceramic, created.id.toString())
     expect(collection).toBeTruthy()
-    expect(collection.sliceMaxItems).toEqual(10)
-    expect(await collection.getSlicesCount()).toEqual(1)
 
     const firstItems = await collection.getFirstN(1)
     expect(firstItems.length).toEqual(0)
