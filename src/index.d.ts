@@ -1,1 +1,0 @@
-declare module '@cbj/ceramic-append-collection';
