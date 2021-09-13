@@ -1,6 +1,6 @@
 # Ceramic Append Collection
 
-This guide describes how to create, update, and query an Append Collection that was created based using [CIP-85](https://github.com/ceramicnetwork/CIP/blob/main/CIPs/CIP-85/CIP-85.md).
+This guide describes how to create, update, and query an Append Collection based on [CIP-85](https://github.com/ceramicnetwork/CIP/blob/main/CIPs/CIP-85/CIP-85.md).
 
 ## Installation
 
