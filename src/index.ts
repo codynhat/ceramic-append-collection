@@ -199,10 +199,12 @@ const load = async (ceramic: any, streamId: string): Promise<Collection> => {
   }
 
   const getItem = async (cursor: Cursor): Promise<Item | null> => {
-    if(cursor.sliceIndex >=  slicesCount) return null
-    if(cursor.contentIndex >=  sliceMaxItems) return null
-
+    if(cursor.sliceIndex >= slicesCount) return null
+    if(cursor.contentIndex >= sliceMaxItems) return null
+    
     const slice: any = await getSlice(ceramic, collection.id.toString(), cursor.sliceIndex)
+    if(slice.content?.contents.length <= cursor.contentIndex) return null
+    
     return {
       cursor,
       value: slice?.content.contents[cursor.contentIndex]
