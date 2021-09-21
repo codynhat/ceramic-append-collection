@@ -1,6 +1,6 @@
 {
   "name": "@cbj/ceramic-append-collection",
-  "version": "0.1.13",
+  "version": "0.1.14",
   "description": "Create a list of items using ceramic streams",
   "author": "Joseph Reed",
   "license": "MIT",
