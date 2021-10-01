@@ -2,7 +2,7 @@ import { randomBytes } from '@stablelib/random'
 import { Ed25519Provider } from 'key-did-provider-ed25519'
 import { DID } from 'dids'
 
-import { AppendCollection, Item } from '../dist/index';
+import { AppendCollection, Item } from '../src/index';
 
 const CeramicClient = require('@ceramicnetwork/http-client').default
 const KeyDidResolver = require('key-did-resolver').default
