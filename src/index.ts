@@ -22,6 +22,17 @@ export interface Collection {
   getTailCursor(): Promise<Cursor | null>;
   getNextCursor(cursor: Cursor): Promise<Cursor | null>;
   getPreviousCursor(cursor: Cursor): Promise<Cursor | null>;
+  pin(shouldBePinned: boolean): Promise<void>;
+  isPinned(): Promise<boolean>;
+}
+
+const isPinned = async (ceramic: any, streamId: string): Promise<boolean> => {
+  const pinnedStreams = await ceramic.pin.ls()
+  const pinned = [];
+  for await (const item of pinnedStreams) {
+    pinned.push(item);
+  }
+  return pinned.includes(streamId)
 }
 
 const newSlice = async (ceramic: any, collectionId: string, index: number) => {
@@ -40,6 +51,8 @@ const newSlice = async (ceramic: any, collectionId: string, index: number) => {
 
   await TileDocument.create(ceramic, content, metadata, opts)
   const slice = await getSlice(ceramic, collectionId, index)
+  if(await isPinned(ceramic, collectionId)) ceramic.pin.add(slice.id.toString())
+
   return slice
 }
 
@@ -253,6 +266,45 @@ const load = async (ceramic: any, streamId: string): Promise<Collection> => {
     return collection.content.slicesCount
   }
 
+  const isPinned = async (): Promise<boolean> => {
+    const pinnedStreams = await ceramic.pin.ls()
+    const pinned = [];
+    for await (const item of pinnedStreams) {
+      pinned.push(item);
+    }
+    return pinned.includes(streamId)
+  }
+
+  const pin = async (shouldBePinned: boolean): Promise<void> => {
+    const alreadyPinned = await isPinned()
+    if(shouldBePinned && !alreadyPinned) {
+      await ceramic.pin.add(streamId)
+      let promises: Promise<any>[] = []
+      for(let i = 0; i < slicesCount; i++) {
+        promises.push(getSlice(ceramic, streamId, i))
+      }
+      const slices = await Promise.all(promises)
+      promises = []
+      slices.forEach((slice) => {
+        promises.push(ceramic.pin.add(slice.id.toString()))
+      })
+      await Promise.all(promises)
+    }
+    else {
+      await ceramic.pin.rm(streamId)
+      let promises: Promise<any>[] = []
+      for(let i = 0; i < slicesCount; i++) {
+        promises.push(getSlice(ceramic, streamId, i))
+      }
+      const slices = await Promise.all(promises)
+      promises = []
+      slices.forEach((slice) => {
+        promises.push(ceramic.pin.rm(slice.id.toString()))
+      })
+      await Promise.all(promises)
+    }
+  }
+
   return {
     id: collection.id,
     insert,
@@ -264,6 +316,8 @@ const load = async (ceramic: any, streamId: string): Promise<Collection> => {
     getPreviousCursor,
     getHeadCursor,
     getTailCursor,
+    isPinned,
+    pin,
   }
 }
 
