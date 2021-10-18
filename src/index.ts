@@ -1,4 +1,4 @@
-import { TileDocument } from '@ceramicnetwork/stream-tile'
+import { TileDocument, TileMetadataArgs } from '@ceramicnetwork/stream-tile'
 import aliases from './model.json'
 
 export interface Cursor {
@@ -11,10 +11,8 @@ export interface Item {
   value: any;
 }
 
-export interface Collection {
+export interface ViewableCollection {
   id: any;
-  insert(item: any): Promise<Cursor>;
-  remove(cursor: Cursor): Promise<void>;
   getFirstN(N: number, fromCursor?: Cursor | null): Promise<Item[]>;
   getLastN(N: number, fromCursor?: Cursor | null): Promise<Item[]>;
   getItem(cursor: Cursor): Promise<Item | null>;
@@ -26,6 +24,11 @@ export interface Collection {
   isPinned(): Promise<boolean>;
 }
 
+export interface Collection extends ViewableCollection {
+  insert(item: any): Promise<Cursor>;
+  remove(cursor: Cursor): Promise<void>;
+}
+
 const isPinned = async (ceramic: any, streamId: string): Promise<boolean> => {
   const pinnedStreams = await ceramic.pin.ls()
   const pinned = [];
@@ -35,13 +38,14 @@ const isPinned = async (ceramic: any, streamId: string): Promise<boolean> => {
   return pinned.includes(streamId)
 }
 
-const newSlice = async (ceramic: any, collectionId: string, index: number) => {
+const newSlice = async (ceramic: any, controller: string, collectionId: string, index: number) => {
   const content = null
 
   const metadata = { 
     deterministic: true,
     schema: aliases.schemas.CollectionSlice,
-    tags: [collectionId, index.toString()]
+    tags: [collectionId, index.toString()],
+    controllers: [controller]
   }
 
   const opts = { 
@@ -50,19 +54,20 @@ const newSlice = async (ceramic: any, collectionId: string, index: number) => {
   }
 
   await TileDocument.create(ceramic, content, metadata, opts)
-  const slice = await getSlice(ceramic, collectionId, index)
+  const slice = await getSlice(ceramic, controller, collectionId, index)
   if(await isPinned(ceramic, collectionId)) ceramic.pin.add(slice.id.toString())
 
   return slice
 }
 
-const getSlice = async (ceramic: any, collectionId: string, index: number) => {
+const getSlice = async (ceramic: any, controller: string, collectionId: string, index: number) => {
   const content = null
 
-  const metadata = { 
+  const metadata: TileMetadataArgs = { 
     deterministic: true,
     schema: aliases.schemas.CollectionSlice,
-    tags: [collectionId, index.toString()]
+    tags: [collectionId, index.toString()],
+    controllers: [controller]
   }
 
   const opts = { 
@@ -75,7 +80,7 @@ const getSlice = async (ceramic: any, collectionId: string, index: number) => {
   return slice
 }
 
-const create = async (ceramic: any, properties:any): Promise<Collection> => {
+const create = async (ceramic: any, properties:any): Promise<ViewableCollection | Collection> => {
   if(!properties?.sliceMaxItems)
     properties = { sliceMaxItems: 64 }
   else if(properties.sliceMaxItems < 10 || properties.sliceMaxItems > 256)
@@ -96,19 +101,22 @@ const create = async (ceramic: any, properties:any): Promise<Collection> => {
   }
 
   const collection = await TileDocument.create(ceramic, content, metadata, opts)
-  await newSlice(ceramic, collection.id.toString(), 0)
+  const controller = ceramic.did.id.toString()
+  await newSlice(ceramic, controller, collection.id.toString(), 0)
   return load(ceramic, collection.id.toString())
 }
 
-const load = async (ceramic: any, streamId: string): Promise<Collection> => {
+const load = async (ceramic: any, streamId: string): Promise<ViewableCollection | Collection> => {
   const collection: any = await TileDocument.load(ceramic, streamId)
+  const controller: string = collection.metadata.controllers[0]
   let { sliceMaxItems, slicesCount } = collection.content
   
   const insert = async (item: any): Promise<Cursor> => {
-    let currentSlice: any = await getSlice(ceramic, collection.id.toString(), slicesCount-1)
+    let currentSlice: any = await getSlice(ceramic, controller, collection.id.toString(), slicesCount-1)
     let contents: any[] = currentSlice.content.contents || []
     if(contents.length === sliceMaxItems) {
-      currentSlice = await newSlice(ceramic, collection.id.toString(), slicesCount)
+      const controller = ceramic.did.id.toString()
+      currentSlice = await newSlice(ceramic, controller, collection.id.toString(), slicesCount)
       slicesCount = slicesCount + 1
       await collection.update({ sliceMaxItems, slicesCount })
       await currentSlice.update({ contents: [item] })
@@ -117,14 +125,14 @@ const load = async (ceramic: any, streamId: string): Promise<Collection> => {
       await currentSlice.update({ contents: [...contents, item] })
     }
 
-    const slice: any = await getSlice(ceramic, collection.id.toString(), slicesCount-1)
+    const slice: any = await getSlice(ceramic, controller, collection.id.toString(), slicesCount-1)
     return { sliceIndex: slice.metadata.tags[1], contentIndex: slice.content.contents?.length - 1 }
   }
   
   const remove = async (cursor: Cursor) => {
     if(cursor.sliceIndex >= slicesCount) throw new Error('invalid cursor.sliceIndex')
     
-    const slice: any = await getSlice(ceramic, collection.id.toString(), cursor.sliceIndex)
+    const slice: any = await getSlice(ceramic, controller, collection.id.toString(), cursor.sliceIndex)
     const contents = slice.content.contents
     if(cursor.contentIndex >= contents.length) throw new Error('invalid cursor.contentIndex')
 
@@ -141,7 +149,7 @@ const load = async (ceramic: any, streamId: string): Promise<Collection> => {
       if(sliceIndex < 0 || sliceIndex >= slicesCount) 
         throw new Error('Invalid sliceIndex: must be between 0 and slicesCount-1')
   
-      const slice: any = await getSlice(ceramic, collection.id.toString(), sliceIndex)
+      const slice: any = await getSlice(ceramic, controller, collection.id.toString(), sliceIndex)
       const contents: any[] = slice.content.contents
       if(!contents) return []
       
@@ -181,7 +189,7 @@ const load = async (ceramic: any, streamId: string): Promise<Collection> => {
       let { sliceIndex, contentIndex } = cursor
       if(contentIndex < 0) throw new Error('Invalid contentIndex: cannot be less than 0')
       if(sliceIndex < 0 || sliceIndex >= slicesCount) throw new Error('Invalid sliceIndex: must be between 0 and slicesCount-1')
-      const slice: any = await getSlice(ceramic, collection.id.toString(), sliceIndex)
+      const slice: any = await getSlice(ceramic, controller, collection.id.toString(), sliceIndex)
       const contents: any[] = slice.content.contents
       if(!contents) return []
 
@@ -215,7 +223,7 @@ const load = async (ceramic: any, streamId: string): Promise<Collection> => {
     if(cursor.sliceIndex >= slicesCount) return null
     if(cursor.contentIndex >= sliceMaxItems) return null
     
-    const slice: any = await getSlice(ceramic, collection.id.toString(), cursor.sliceIndex)
+    const slice: any = await getSlice(ceramic, controller, collection.id.toString(), cursor.sliceIndex)
     if(slice.content?.contents.length <= cursor.contentIndex) return null
     
     return {
@@ -281,7 +289,7 @@ const load = async (ceramic: any, streamId: string): Promise<Collection> => {
       await ceramic.pin.add(streamId)
       let promises: Promise<any>[] = []
       for(let i = 0; i < slicesCount; i++) {
-        promises.push(getSlice(ceramic, streamId, i))
+        promises.push(getSlice(ceramic, controller, streamId, i))
       }
       const slices = await Promise.all(promises)
       promises = []
@@ -294,7 +302,7 @@ const load = async (ceramic: any, streamId: string): Promise<Collection> => {
       await ceramic.pin.rm(streamId)
       let promises: Promise<any>[] = []
       for(let i = 0; i < slicesCount; i++) {
-        promises.push(getSlice(ceramic, streamId, i))
+        promises.push(getSlice(ceramic, controller, streamId, i))
       }
       const slices = await Promise.all(promises)
       promises = []
@@ -305,10 +313,8 @@ const load = async (ceramic: any, streamId: string): Promise<Collection> => {
     }
   }
 
-  return {
+  const viewable: ViewableCollection = {
     id: collection.id,
-    insert,
-    remove,
     getFirstN,
     getLastN,
     getItem,
@@ -319,6 +325,18 @@ const load = async (ceramic: any, streamId: string): Promise<Collection> => {
     isPinned,
     pin,
   }
+
+  if(ceramic.did.id.toString() !== controller) {
+    return viewable
+  }
+  else {
+    return {
+      ...viewable,
+      insert,
+      remove,
+    }
+  }
+
 }
 
 export const AppendCollection = {

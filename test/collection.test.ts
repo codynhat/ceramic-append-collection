@@ -2,7 +2,7 @@ import { randomBytes } from '@stablelib/random'
 import { Ed25519Provider } from 'key-did-provider-ed25519'
 import { DID } from 'dids'
 
-import { AppendCollection, Item } from '../src/index';
+import { AppendCollection, Collection, ViewableCollection, Item } from '../src/index';
 
 const CeramicClient = require('@ceramicnetwork/http-client').default
 const KeyDidResolver = require('key-did-resolver').default
@@ -25,9 +25,15 @@ describe("test AppendCollection correctness", () => {
     const collection = await AppendCollection.create(ceramic, { sliceMaxItems })
     expect(collection).toBeTruthy()
 
-    const firstItems = await collection.getFirstN(1)
+    let firstItems = await collection.getFirstN(1)
     expect(firstItems.length).toEqual(0)
-    const lastItems = await collection.getLastN(1)
+    let lastItems = await collection.getLastN(1)
+    expect(lastItems.length).toEqual(0)
+
+    const viewable = await AppendCollection.load(ceramic, collection.id)
+    firstItems = await viewable.getFirstN(1)
+    expect(firstItems.length).toEqual(0)
+    lastItems = await viewable.getLastN(1)
     expect(lastItems.length).toEqual(0)
   });
   
@@ -46,13 +52,13 @@ describe("test AppendCollection correctness", () => {
   it("add and remove items from an append collection", async () => {
     const sliceMaxItems = 10
     const inputArraySize = 31
-    await runTest(sliceMaxItems, inputArraySize)
+    let collection = await AppendCollection.create(ceramic, { sliceMaxItems }) as Collection
+    await runTest(collection, inputArraySize)
   });
 
-  async function runTest(sliceMaxItems: number, inputArraySize: number) {
+  async function runTest(collection: Collection, inputArraySize: number) {
     let expected: string[] = []
-    const collection = await AppendCollection.create(ceramic, { sliceMaxItems })
-    
+
     async function insert(item: string, inputArraySize: number, collection: any, expected: string[]) {
       await collection.insert(item)
       expected.push(item)
@@ -75,11 +81,23 @@ describe("test AppendCollection correctness", () => {
       await collection.remove(item.cursor)
       expected.splice(index, 1)
   
-      actual = await collection.getFirstN(inputArraySize)
-      actual.forEach((item: Item, index: number) => {
-        expect(item.value).toEqual(expected[index])
-      });
+      const writeable = await AppendCollection.load(ceramic, collection.id) as Collection
+      const readonly = await AppendCollection.load(ceramic, collection.id) as ViewableCollection
+    
+      const promises = await Promise.all([
+        writeable.getFirstN(inputArraySize),
+        readonly.getFirstN(inputArraySize)
+      ])
+      const editable = promises[0]
+      const viewable = promises[1]
+      for(let i = 0; i < editable.length; i++) {
+        const item: Item = await editable[i]
+        const view: Item = await viewable[i]
+        expect(item?.value).toEqual(expected[i])
+        expect(item?.value).toEqual(view?.value)
+      }
     }
+
   }
 
   function getRandomInt(min: number, max: number) {
