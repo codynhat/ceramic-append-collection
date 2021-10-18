@@ -326,7 +326,7 @@ const load = async (ceramic: any, streamId: string): Promise<ViewableCollection 
     pin,
   }
 
-  if(ceramic.did.id.toString() !== controller) {
+  if(ceramic?.did?.id.toString() !== controller) {
     return viewable
   }
   else {
