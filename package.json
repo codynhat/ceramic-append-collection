@@ -9,13 +9,10 @@
     "ceramic": "ceramic daemon",
     "bootstrap": "npx ts-node ./bootstrap.ts",
     "generateSeed": "npx ts-node ./generateSeed.ts",
-    "build": "tsc && cp src/index.ts dist",
+    "build": "tsc && cp src/index.ts dist && cp src/model.json dist",
     "test": "jest",
     "postinstall": "npm run build"
   },
-  "files": [
-    "src"
-  ],
   "dependencies": {
     "@ceramicnetwork/stream-tile": "^1.3.0"
   },
