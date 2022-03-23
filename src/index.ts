@@ -30,7 +30,7 @@ export interface Collection extends ViewableCollection {
 }
 
 const isPinned = async (ceramic: any, streamId: string): Promise<boolean> => {
-  const pinnedStreams = await ceramic.pin.ls()
+  const pinnedStreams = await ceramic.pin.ls(streamId)
   const pinned = [];
   for await (const item of pinnedStreams) {
     pinned.push(item);
@@ -275,7 +275,7 @@ const load = async (ceramic: any, streamId: string): Promise<ViewableCollection 
   }
 
   const isPinned = async (): Promise<boolean> => {
-    const pinnedStreams = await ceramic.pin.ls()
+    const pinnedStreams = await ceramic.pin.ls(streamId)
     const pinned = [];
     for await (const item of pinnedStreams) {
       pinned.push(item);
