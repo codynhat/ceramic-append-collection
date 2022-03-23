@@ -13,6 +13,9 @@
     "test": "jest",
     "postinstall": "npm run build"
   },
+  "files": [
+    "src"
+  ],
   "dependencies": {
     "@ceramicnetwork/stream-tile": "^1.3.0"
   },
